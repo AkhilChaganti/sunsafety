@@ -1,0 +1,36 @@
+@import './base.css';
+
+:root {
+  color: #0f172a;
+  background-color: #fffaf3;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+
+html {
+  scroll-behavior: smooth;
+}
+
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top, rgba(251, 191, 36, 0.18), transparent 28%),
+    linear-gradient(180deg, #fffaf3 0%, #ffffff 58%, #fff7ed 100%);
+}
+
+
+a {
+  color: inherit;
+}
+
+ 
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
