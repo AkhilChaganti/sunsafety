@@ -2,7 +2,7 @@
   <header class="site-header">
     <div class="header-inner">
       <RouterLink to="/home" class="brand">
-        <span class="brand-icon" aria-hidden="true">Sun</span>
+        <span class="brand-icon" aria-hidden="true">☀️</span>
         <span class="brand-text">SunSafe</span>
       </RouterLink>
 

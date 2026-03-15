@@ -171,12 +171,12 @@
             <div>
               <h2 class="detail-title">Today's UV Forecast</h2>
               <p class="detail-subtitle">
-                This uses forecast values from the current response when available.
+                Live forecast data is shown here when available.
               </p>
             </div>
           </div>
 
-          <div class="forecast-chart">
+          <div v-if="forecastPoints.length" class="forecast-chart">
             <svg viewBox="0 0 760 320" class="forecast-svg" aria-label="Today's UV forecast chart">
               <g>
                 <rect
@@ -274,6 +274,10 @@
               </g>
             </svg>
           </div>
+
+          <p v-else class="forecast-empty">
+            Forecast unavailable.
+          </p>
         </section>
 
         <section class="detail-card">
@@ -565,45 +569,6 @@ function extractHourValue(rawTime) {
   return date.getHours() + date.getMinutes() / 60
 }
 
-function getSunCurveWeight(hour, sunrise = 6, sunset = 18.5) {
-  if (hour <= sunrise || hour >= sunset) return 0
-
-  const progress = (hour - sunrise) / (sunset - sunrise)
-  return Math.pow(Math.sin(progress * Math.PI), 1.7)
-}
-
-function buildEstimatedForecast() {
-  const currentUv = Number(uvData.value?.uvIndex)
-  const referenceDate = getValidDate(uvData.value?.time) || new Date()
-
-  if (!Number.isFinite(currentUv) || currentUv < 0) {
-    return []
-  }
-
-  const currentHour = referenceDate.getHours() + referenceDate.getMinutes() / 60
-  const currentWeight = getSunCurveWeight(currentHour)
-  const estimatedPeak =
-    currentWeight > 0.15
-      ? Math.min(15, Math.max(currentUv, currentUv / currentWeight))
-      : Math.min(15, currentUv + 3)
-
-  const points = []
-
-  for (let hour = 6; hour <= 19; hour += 1) {
-    const curveWeight = getSunCurveWeight(hour)
-    const value = Number((estimatedPeak * curveWeight).toFixed(1))
-
-    points.push({
-      key: `estimated-${hour}`,
-      hour,
-      uvIndex: Math.max(0, value),
-      label: formatHourLabel(hour),
-    })
-  }
-
-  return points
-}
-
 const forecastPoints = computed(() => {
   const source =
     uvData.value?.forecast ||
@@ -644,7 +609,7 @@ const forecastPoints = computed(() => {
     }
   }
 
-  return buildEstimatedForecast()
+  return []
 })
 
 const forecastRange = computed(() => {
@@ -1332,6 +1297,17 @@ onUnmounted(() => {
 
 .forecast-chart {
   overflow-x: auto;
+}
+
+.forecast-empty {
+  margin: 0;
+  padding: 1.1rem 1.2rem;
+  border: 1px dashed #c9bfae;
+  border-radius: 16px;
+  background: #fcfaf5;
+  color: #5b6170;
+  text-align: center;
+  font-weight: 600;
 }
 
 .forecast-svg {
