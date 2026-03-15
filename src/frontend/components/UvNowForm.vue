@@ -1,0 +1,1495 @@
+<template>
+  <section class="home-page">
+    <div class="home-container">
+      <header class="home-header">
+        <h1 class="page-subtitle">
+          Check the current UV level for your area and stay aware when you are outdoors.
+        </h1>
+      </header>
+
+      <section class="content-card">
+        <p v-if="isLoading" class="status-text">
+          Loading your current UV data...
+        </p>
+
+        <p v-else-if="errorMessage" class="status-text status-text--error">
+          {{ errorMessage }}
+        </p>
+
+        <div v-else-if="uvData" class="uv-dashboard">
+          <div class="uv-left-panel">
+            <div class="location-banner">
+              <div class="weather-icon" aria-hidden="true">
+                <span class="weather-icon__sun"></span>
+                <span class="weather-icon__cloud"></span>
+              </div>
+
+              <div>
+                <h2 class="location-title">
+                  Current UV Level in {{ displayLocation }}
+                </h2>
+                <p v-if="formattedDateLine" class="location-date">
+                  {{ formattedDateLine }}
+                </p>
+              </div>
+            </div>
+
+            <div class="map-wrapper">
+              <div ref="mapContainer" class="map-container"></div>
+
+              <div v-if="!hasMapboxToken" class="map-overlay-message">
+                Map preview is unavailable because the Mapbox token is missing.
+              </div>
+            </div>
+
+            <div class="info-strip">
+              <div class="info-card info-card--time">
+                <div class="clock-icon" aria-hidden="true"></div>
+
+                <div>
+                  <span class="info-label">Updated</span>
+                  <strong class="info-value">
+                    {{ formattedUpdatedTime || 'Live now' }}
+                  </strong>
+                </div>
+              </div>
+
+              <div class="info-card info-card--coords">
+                <span class="info-label">Specified location</span>
+                <strong class="info-value">{{ formattedLatitude }}</strong>
+                <strong class="info-value">{{ formattedLongitude }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="uv-right-panel">
+            <div class="gauge-card">
+              <svg viewBox="0 0 220 150" class="uv-gauge" aria-hidden="true">
+                <path
+                  d="M 30 120 A 80 80 0 0 1 190 120"
+                  class="gauge-track"
+                />
+                <path
+                  d="M 30 120 A 80 80 0 0 1 190 120"
+                  class="gauge-active"
+                  :style="{ stroke: uvDisplayInfo.color }"
+                />
+                <line
+                  v-if="needlePoint"
+                  x1="110"
+                  y1="120"
+                  :x2="needlePoint.x"
+                  :y2="needlePoint.y"
+                  class="gauge-needle"
+                />
+                <circle cx="110" cy="120" r="7" class="gauge-center" />
+              </svg>
+
+              <div class="uv-number">
+                {{ uvValueText }}
+              </div>
+
+              <div
+                class="uv-risk-badge"
+                :style="{
+                  backgroundColor: uvDisplayInfo.color,
+                  color: uvDisplayInfo.textColor,
+                }"
+              >
+                {{ uvDisplayInfo.level }}
+              </div>
+            </div>
+
+            <div class="mini-info-grid">
+              <div class="mini-info-card mini-info-card--purple">
+                <span class="mini-info-label">Sun protection</span>
+                <strong class="mini-info-value">Needed when UV is 3+</strong>
+              </div>
+
+              <div class="mini-info-card mini-info-card--light">
+                <span class="mini-info-label">Skin burn time</span>
+                <strong class="mini-info-value">10 to 15 minutes</strong>
+                <small class="mini-info-note">Quick display text for now</small>
+              </div>
+            </div>
+
+            <div
+              class="warning-card"
+              :style="{ borderColor: uvDisplayInfo.color }"
+            >
+              <div class="warning-header">
+                <span class="warning-icon" aria-hidden="true">⚠️</span>
+
+                <div>
+                  <h3 class="warning-title">
+                    {{ burnWarningText }}
+                  </h3>
+
+                  <p class="warning-text">
+                    {{ uvDisplayInfo.message }}
+                  </p>
+                </div>
+              </div>
+
+              <p class="warning-subtext">Full coverage when outside:</p>
+
+              <div class="protection-grid">
+                <div class="protection-item">
+                  <span class="protection-icon" aria-hidden="true">🧴</span>
+                  <span class="protection-label">SPF50+</span>
+                </div>
+
+                <div class="protection-item">
+                  <span class="protection-icon" aria-hidden="true">👒</span>
+                  <span class="protection-label">Hat</span>
+                </div>
+
+                <div class="protection-item">
+                  <span class="protection-icon" aria-hidden="true">🕶️</span>
+                  <span class="protection-label">Sunglasses</span>
+                </div>
+              </div>
+
+              <p class="refresh-note">
+                This page refreshes automatically every 30 minutes.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <LocationInput
+          v-if="showManualLocation"
+          @submit="handleManualLocationSubmit"
+        />
+      </section>
+
+      <section v-if="uvData" class="lower-panels">
+        <section class="detail-card">
+          <div class="detail-card__header">
+            <div class="detail-icon detail-icon--sun" aria-hidden="true">☀️</div>
+
+            <div>
+              <h2 class="detail-title">Today's UV Forecast</h2>
+              <p class="detail-subtitle">
+                This uses forecast values from the current response when available.
+              </p>
+            </div>
+          </div>
+
+          <div class="forecast-chart">
+            <svg viewBox="0 0 760 320" class="forecast-svg" aria-label="Today's UV forecast chart">
+              <g>
+                <rect
+                  v-for="band in forecastBands"
+                  :key="band.label"
+                  :x="chartBounds.left"
+                  :y="getBandY(band.max)"
+                  :width="chartBounds.right - chartBounds.left"
+                  :height="getBandHeight(band.min, band.max)"
+                  :fill="band.color"
+                />
+
+                <line
+                  v-for="level in yAxisLevels"
+                  :key="level"
+                  :x1="chartBounds.left"
+                  :x2="chartBounds.right"
+                  :y1="getChartY(level)"
+                  :y2="getChartY(level)"
+                  class="forecast-grid-line"
+                />
+
+                <text
+                  v-for="level in yAxisLevels"
+                  :key="`y-label-${level}`"
+                  :x="chartBounds.left - 12"
+                  :y="getChartY(level) + 4"
+                  class="forecast-axis-label"
+                  text-anchor="end"
+                >
+                  {{ level }}
+                </text>
+
+                <text
+                  v-for="band in forecastBands"
+                  :key="`band-label-${band.label}`"
+                  :x="chartBounds.right - 10"
+                  :y="getBandLabelY(band.min, band.max)"
+                  class="forecast-band-label"
+                  text-anchor="end"
+                >
+                  {{ band.label }}
+                </text>
+
+                <line
+                  :x1="chartBounds.left"
+                  :x2="chartBounds.right"
+                  :y1="chartBounds.bottom"
+                  :y2="chartBounds.bottom"
+                  class="forecast-axis-line"
+                />
+
+                <line
+                  :x1="chartBounds.left"
+                  :x2="chartBounds.left"
+                  :y1="chartBounds.top"
+                  :y2="chartBounds.bottom"
+                  class="forecast-axis-line"
+                />
+
+                <line
+                  v-for="tick in forecastTicks"
+                  :key="tick.label"
+                  :x1="tick.x"
+                  :x2="tick.x"
+                  :y1="chartBounds.bottom"
+                  :y2="chartBounds.bottom + 8"
+                  class="forecast-axis-line"
+                />
+
+                <text
+                  v-for="tick in forecastTicks"
+                  :key="`tick-label-${tick.label}`"
+                  :x="tick.x"
+                  :y="chartBounds.bottom + 24"
+                  class="forecast-axis-label"
+                  text-anchor="middle"
+                >
+                  {{ tick.label }}
+                </text>
+
+                <polyline
+                  :points="forecastPolyline"
+                  class="forecast-line"
+                />
+
+                <circle
+                  v-for="point in forecastPoints"
+                  :key="point.key"
+                  :cx="getChartX(point.hour)"
+                  :cy="getChartY(point.uvIndex)"
+                  r="3.5"
+                  class="forecast-point"
+                />
+              </g>
+            </svg>
+          </div>
+        </section>
+
+        <section class="detail-card">
+          <div class="detail-card__header">
+            <div class="detail-icon detail-icon--alert" aria-hidden="true">⏱️</div>
+
+            <div>
+              <h2 class="detail-title">Skin Damage Times at Current UV Level</h2>
+              <p class="detail-subtitle">
+                Minutes of unprotected exposure before skin starts burning.
+              </p>
+            </div>
+          </div>
+
+          <div class="skin-grid">
+            <div
+              v-for="item in skinDamageItems"
+              :key="item.label"
+              class="skin-card"
+            >
+              <span class="skin-card__label">{{ item.label }}</span>
+
+              <span
+                class="skin-card__time"
+                :class="item.toneClass"
+              >
+                {{ item.timeText }}
+              </span>
+            </div>
+          </div>
+        </section>
+      </section>
+    </div>
+  </section>
+</template>
+
+<script setup>
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import LocationInput from './LocationInput.vue'
+import { getCurrentUvByCoords, searchLocation } from '../services/uvService'
+
+const isLoading = ref(false)
+const errorMessage = ref('')
+const uvData = ref(null)
+const showManualLocation = ref(false)
+
+const latitude = ref(null)
+const longitude = ref(null)
+
+const mapContainer = ref(null)
+
+const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || ''
+const hasMapboxToken = computed(() => Boolean(mapboxToken))
+
+let refreshTimer = null
+let map = null
+let marker = null
+
+const chartBounds = {
+  left: 64,
+  right: 710,
+  top: 24,
+  bottom: 270,
+}
+
+const forecastBands = [
+  { label: 'Low', min: 0, max: 2, color: '#c8e2b6' },
+  { label: 'Moderate', min: 3, max: 5, color: '#e9e4a8' },
+  { label: 'High', min: 6, max: 7, color: '#ecd4a5' },
+  { label: 'Very High', min: 8, max: 10, color: '#e7bcc4' },
+  { label: 'Extreme', min: 11, max: 15, color: '#d8d0ef' },
+]
+
+const yAxisLevels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+
+const skinTypeReference = [
+  { label: 'Type I (Very Fair)', baseMinutesAtUv8: 7 },
+  { label: 'Type II (Fair)', baseMinutesAtUv8: 11 },
+  { label: 'Type III (Medium)', baseMinutesAtUv8: 22 },
+  { label: 'Type IV (Olive)', baseMinutesAtUv8: 33 },
+  { label: 'Type V (Brown)', baseMinutesAtUv8: 44 },
+  { label: 'Type VI (Dark)', baseMinutesAtUv8: 56 },
+]
+
+function getValidDate(rawTime) {
+  if (!rawTime) return null
+
+  const date =
+    typeof rawTime === 'number'
+      ? new Date(rawTime * 1000)
+      : new Date(rawTime)
+
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return date
+}
+
+const formattedDateLine = computed(() => {
+  const date = getValidDate(uvData.value?.time)
+
+  if (!date) return ''
+
+  return `On ${new Intl.DateTimeFormat('en-AU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date)}`
+})
+
+const formattedUpdatedTime = computed(() => {
+  const date = getValidDate(uvData.value?.time)
+
+  if (!date) return ''
+
+  return new Intl.DateTimeFormat('en-AU', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+})
+
+const displayLocation = computed(() => {
+  return uvData.value?.locationName || 'your area'
+})
+
+const uvValueText = computed(() => {
+  const value = Number(uvData.value?.uvIndex)
+
+  if (Number.isNaN(value)) {
+    return '--'
+  }
+
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+})
+
+function getUvDisplayInfo(uvIndex) {
+  const value = Number(uvIndex)
+
+  // Keeps the screen stable if the API sends something unexpected.
+  if (Number.isNaN(value) || value < 0) {
+    return {
+      level: 'Unknown',
+      color: '#6b7280',
+      textColor: '#ffffff',
+      message: 'UV data is currently unavailable.',
+    }
+  }
+
+  if (value < 1) {
+    return {
+      level: 'Low',
+      color: '#2e7d32',
+      textColor: '#ffffff',
+      message: 'Sun protection is usually not required unless near reflective surfaces.',
+    }
+  }
+
+  if (value <= 2) {
+    return {
+      level: 'Low',
+      color: '#2e7d32',
+      textColor: '#ffffff',
+      message: 'Sun protection is usually not required unless near reflective surfaces.',
+    }
+  }
+
+  if (value <= 5) {
+    return {
+      level: 'Moderate',
+      color: '#f9a825',
+      textColor: '#111827',
+      message: 'Sun protection recommended.',
+    }
+  }
+
+  if (value <= 7) {
+    return {
+      level: 'High',
+      color: '#ef6c00',
+      textColor: '#ffffff',
+      message: 'Sun protection recommended.',
+    }
+  }
+
+  if (value <= 10) {
+    return {
+      level: 'Very High',
+      color: '#c62828',
+      textColor: '#ffffff',
+      message: 'Sun protection recommended.',
+    }
+  }
+
+  return {
+    level: 'Extreme',
+    color: '#6a1b9a',
+    textColor: '#ffffff',
+    message: 'Sun protection recommended.',
+  }
+}
+
+const uvDisplayInfo = computed(() => {
+  if (uvData.value?.uvIndex == null) {
+    return {
+      level: 'Unknown',
+      color: '#6b7280',
+      textColor: '#ffffff',
+      message: 'UV data is currently unavailable.',
+    }
+  }
+
+  return getUvDisplayInfo(uvData.value.uvIndex)
+})
+
+const needlePoint = computed(() => {
+  const value = Number(uvData.value?.uvIndex)
+
+  if (Number.isNaN(value)) {
+    return null
+  }
+
+  const safeValue = Math.max(0, Math.min(value, 12))
+  const angle = 180 + (safeValue / 12) * 180
+  const radians = (angle * Math.PI) / 180
+
+  const centerX = 110
+  const centerY = 120
+  const needleLength = 58
+
+  return {
+    x: centerX + needleLength * Math.cos(radians),
+    y: centerY + needleLength * Math.sin(radians),
+  }
+})
+
+const burnWarningText = computed(() => {
+  const value = Number(uvData.value?.uvIndex)
+
+  if (Number.isNaN(value) || value < 3) {
+    return 'UV is lower right now, but conditions can still change.'
+  }
+
+  return 'Unprotected skin can burn in 10 to 15 minutes!'
+})
+
+const formattedLatitude = computed(() => {
+  return formatCoordinate(latitude.value, 'N', 'S')
+})
+
+const formattedLongitude = computed(() => {
+  return formatCoordinate(longitude.value, 'E', 'W')
+})
+
+function formatCoordinate(value, positiveDirection, negativeDirection) {
+  const numericValue = Number(value)
+
+  if (Number.isNaN(numericValue)) {
+    return 'Not available'
+  }
+
+  const direction = numericValue >= 0 ? positiveDirection : negativeDirection
+  return `${Math.abs(numericValue).toFixed(4)}°${direction}`
+}
+
+function formatHourLabel(hour) {
+  const wholeHour = Math.round(hour)
+  return `${String(wholeHour).padStart(2, '0')}:00`
+}
+
+function extractHourValue(rawTime) {
+  if (typeof rawTime === 'number' && Number.isFinite(rawTime)) {
+    if (rawTime > 1000000000) {
+      const date = new Date(rawTime * 1000)
+      return date.getHours() + date.getMinutes() / 60
+    }
+
+    if (rawTime >= 0 && rawTime <= 23) {
+      return rawTime
+    }
+  }
+
+  const date = getValidDate(rawTime)
+  if (!date) return null
+
+  return date.getHours() + date.getMinutes() / 60
+}
+
+function getSunCurveWeight(hour, sunrise = 6, sunset = 18.5) {
+  if (hour <= sunrise || hour >= sunset) return 0
+
+  const progress = (hour - sunrise) / (sunset - sunrise)
+  return Math.pow(Math.sin(progress * Math.PI), 1.7)
+}
+
+function buildEstimatedForecast() {
+  const currentUv = Number(uvData.value?.uvIndex)
+  const referenceDate = getValidDate(uvData.value?.time) || new Date()
+
+  if (!Number.isFinite(currentUv) || currentUv < 0) {
+    return []
+  }
+
+  const currentHour = referenceDate.getHours() + referenceDate.getMinutes() / 60
+  const currentWeight = getSunCurveWeight(currentHour)
+  const estimatedPeak =
+    currentWeight > 0.15
+      ? Math.min(15, Math.max(currentUv, currentUv / currentWeight))
+      : Math.min(15, currentUv + 3)
+
+  const points = []
+
+  for (let hour = 6; hour <= 19; hour += 1) {
+    const curveWeight = getSunCurveWeight(hour)
+    const value = Number((estimatedPeak * curveWeight).toFixed(1))
+
+    points.push({
+      key: `estimated-${hour}`,
+      hour,
+      uvIndex: Math.max(0, value),
+      label: formatHourLabel(hour),
+    })
+  }
+
+  return points
+}
+
+const forecastPoints = computed(() => {
+  const source =
+    uvData.value?.forecast ||
+    uvData.value?.hourlyForecast ||
+    uvData.value?.hourly ||
+    uvData.value?.todayForecast ||
+    []
+
+  if (Array.isArray(source) && source.length) {
+    const parsedPoints = source
+      .map((item, index) => {
+        const uvIndex = Number(
+          item?.uvIndex ??
+          item?.uv ??
+          item?.value ??
+          item?.index
+        )
+
+        const rawTime =
+          item?.time ??
+          item?.timestamp ??
+          item?.datetime ??
+          item?.hour
+
+        const hour = extractHourValue(rawTime)
+
+        return {
+          key: item?.id ?? `forecast-${index}`,
+          uvIndex,
+          hour,
+        }
+      })
+      .filter((item) => Number.isFinite(item.uvIndex) && Number.isFinite(item.hour))
+      .sort((a, b) => a.hour - b.hour)
+
+    if (parsedPoints.length) {
+      return parsedPoints
+    }
+  }
+
+  return buildEstimatedForecast()
+})
+
+const forecastRange = computed(() => {
+  if (!forecastPoints.value.length) {
+    return { minHour: 6, maxHour: 18 }
+  }
+
+  const hours = forecastPoints.value.map((item) => item.hour)
+  const minHour = Math.floor(Math.min(...hours))
+  const maxHour = Math.ceil(Math.max(...hours))
+
+  if (minHour === maxHour) {
+    return { minHour: minHour - 1, maxHour: maxHour + 1 }
+  }
+
+  return { minHour, maxHour }
+})
+
+function getChartX(hour) {
+  const { minHour, maxHour } = forecastRange.value
+  const usableWidth = chartBounds.right - chartBounds.left
+  return chartBounds.left + ((hour - minHour) / (maxHour - minHour)) * usableWidth
+}
+
+function getChartY(uvIndex) {
+  const maxUv = 15
+  const usableHeight = chartBounds.bottom - chartBounds.top
+  return chartBounds.bottom - (uvIndex / maxUv) * usableHeight
+}
+
+function getBandY(maxValue) {
+  return getChartY(maxValue)
+}
+
+function getBandHeight(minValue, maxValue) {
+  return getChartY(minValue) - getChartY(maxValue)
+}
+
+function getBandLabelY(minValue, maxValue) {
+  return getChartY((minValue + maxValue) / 2) + 4
+}
+
+const forecastPolyline = computed(() => {
+  if (!forecastPoints.value.length) {
+    return ''
+  }
+
+  return forecastPoints.value
+    .map((point) => `${getChartX(point.hour)},${getChartY(point.uvIndex)}`)
+    .join(' ')
+})
+
+const forecastTicks = computed(() => {
+  const { minHour, maxHour } = forecastRange.value
+  const totalHours = maxHour - minHour
+  const step = totalHours <= 6 ? 1 : 3
+  const ticks = []
+
+  for (let hour = minHour; hour <= maxHour; hour += step) {
+    ticks.push({
+      label: formatHourLabel(hour),
+      x: getChartX(hour),
+    })
+  }
+
+  return ticks
+})
+
+function getSkinToneClass(minutes) {
+  if (minutes <= 10) return 'skin-card__time--danger'
+  if (minutes <= 20) return 'skin-card__time--warning'
+  if (minutes <= 35) return 'skin-card__time--caution'
+  return 'skin-card__time--safe'
+}
+
+const skinDamageItems = computed(() => {
+  const currentUv = Number(uvData.value?.uvIndex)
+
+  return skinTypeReference.map((item) => {
+    if (!Number.isFinite(currentUv) || currentUv <= 0) {
+      return {
+        ...item,
+        timeText: 'Low risk',
+        toneClass: 'skin-card__time--safe',
+      }
+    }
+
+    // This gives a simple front-end estimate based on the live UV value.
+    const estimatedMinutes = Math.max(
+      2,
+      Math.round((item.baseMinutesAtUv8 * 8) / currentUv)
+    )
+
+    return {
+      ...item,
+      timeText: `${estimatedMinutes} min`,
+      toneClass: getSkinToneClass(estimatedMinutes),
+    }
+  })
+})
+
+function initialiseMap() {
+  if (!hasMapboxToken.value) return
+  if (!mapContainer.value) return
+  if (latitude.value == null || longitude.value == null) return
+
+  mapboxgl.accessToken = mapboxToken
+
+  if (!map) {
+    map = new mapboxgl.Map({
+      container: mapContainer.value,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [longitude.value, latitude.value],
+      zoom: 9,
+    })
+
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right')
+
+    map.on('load', () => {
+      map.resize()
+    })
+  } else {
+    map.setCenter([longitude.value, latitude.value])
+    map.resize()
+  }
+
+  if (!marker) {
+    marker = new mapboxgl.Marker({ color: '#ef4444' })
+      .setLngLat([longitude.value, latitude.value])
+      .addTo(map)
+  } else {
+    marker.setLngLat([longitude.value, latitude.value])
+  }
+}
+
+async function fetchUvData() {
+  if (latitude.value == null || longitude.value == null) return
+
+  try {
+    errorMessage.value = ''
+    const data = await getCurrentUvByCoords(latitude.value, longitude.value)
+    uvData.value = data
+  } catch (error) {
+    errorMessage.value = 'Could not load UV data right now.'
+  }
+}
+
+function startAutoRefresh() {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+  }
+
+  refreshTimer = setInterval(() => {
+    fetchUvData()
+  }, 30 * 60 * 1000)
+}
+
+function requestUserLocation() {
+  isLoading.value = true
+  errorMessage.value = ''
+  uvData.value = null
+  showManualLocation.value = false
+
+  if (!navigator.geolocation) {
+    isLoading.value = false
+    errorMessage.value = 'Geolocation is not supported in this browser.'
+    showManualLocation.value = true
+    return
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      latitude.value = position.coords.latitude
+      longitude.value = position.coords.longitude
+
+      await fetchUvData()
+      startAutoRefresh()
+      isLoading.value = false
+    },
+    () => {
+      isLoading.value = false
+      errorMessage.value =
+        'Location access was denied. Please enter your suburb or postcode.'
+      showManualLocation.value = true
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    }
+  )
+}
+
+async function handleManualLocationSubmit(value) {
+  isLoading.value = true
+  errorMessage.value = ''
+  uvData.value = null
+
+  try {
+    const locationData = await searchLocation(value)
+
+    latitude.value = locationData.latitude
+    longitude.value = locationData.longitude
+
+    await fetchUvData()
+    startAutoRefresh()
+    showManualLocation.value = false
+  } catch (error) {
+    errorMessage.value =
+      'We could not find that suburb or postcode. Please try again.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+watch(
+  [isLoading, uvData, latitude, longitude],
+  async ([loading, data, newLatitude, newLongitude]) => {
+    if (loading || !data || newLatitude == null || newLongitude == null) return
+
+    await nextTick()
+    initialiseMap()
+  }
+)
+
+onMounted(() => {
+  requestUserLocation()
+})
+
+onUnmounted(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+  }
+
+  if (map) {
+    map.remove()
+    map = null
+    marker = null
+  }
+})
+</script>
+
+<style scoped>
+.home-page {
+  width: 100%;
+  padding: 2.5rem 0 3rem;
+  background: linear-gradient(180deg, #f8f4e8 0%, #f6f0de 100%);
+}
+
+.home-container {
+  width: min(1180px, 94%);
+  margin: 0 auto;
+}
+
+.home-header {
+  margin-bottom: 1.5rem;
+}
+
+.page-subtitle {
+  margin: 0;
+  color: #5b6170;
+  line-height: 1.6;
+  font-size: 1.25rem;
+}
+
+.content-card {
+  padding: 1.5rem;
+  background: #f5efe2;
+  border: 1px solid #e1d7c5;
+  border-radius: 26px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.07);
+}
+
+.status-text {
+  margin: 0;
+  color: #374151;
+}
+
+.status-text--error {
+  color: #b91c1c;
+}
+
+.uv-dashboard {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.uv-left-panel {
+  padding-right: 1.5rem;
+  border-right: 2px solid #403c36;
+}
+
+.location-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.4rem;
+}
+
+.weather-icon {
+  position: relative;
+  width: 56px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.weather-icon__sun {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  background: #e8d65e;
+  border-radius: 50%;
+  box-shadow: 0 0 0 7px rgba(232, 214, 94, 0.18);
+}
+
+.weather-icon__cloud {
+  position: absolute;
+  left: 2px;
+  bottom: 0;
+  width: 38px;
+  height: 18px;
+  background: #d9d9d9;
+  border-radius: 18px;
+}
+
+.weather-icon__cloud::before,
+.weather-icon__cloud::after {
+  content: '';
+  position: absolute;
+  background: #d9d9d9;
+  border-radius: 50%;
+}
+
+.weather-icon__cloud::before {
+  width: 18px;
+  height: 18px;
+  left: 4px;
+  top: -9px;
+}
+
+.weather-icon__cloud::after {
+  width: 22px;
+  height: 22px;
+  right: 4px;
+  top: -11px;
+}
+
+.location-title {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.08;
+  color: #1f1f1f;
+}
+
+.location-date {
+  margin: 0.3rem 0 0;
+  color: #54504a;
+  font-size: 1.05rem;
+}
+
+.map-wrapper {
+  position: relative;
+  min-height: 380px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 2px solid #aab7bd;
+  background: #e5e7eb;
+}
+
+.map-container {
+  width: 100%;
+  height: 380px;
+}
+
+.map-overlay-message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  text-align: center;
+  font-weight: 600;
+  color: #374151;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.info-strip {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: stretch;
+}
+
+.info-card {
+  background: linear-gradient(180deg, #ffffff 0%, #eaeaea 100%);
+  border: 1px solid #a7a7a7;
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.08);
+}
+
+.info-card--time {
+  min-width: 185px;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.info-card--coords {
+  min-width: 200px;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.clock-icon {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #2f2f2f;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.clock-icon::before,
+.clock-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: #2f2f2f;
+  transform-origin: bottom center;
+  border-radius: 999px;
+}
+
+.clock-icon::before {
+  width: 3px;
+  height: 11px;
+  transform: translate(-50%, -100%) rotate(0deg);
+}
+
+.clock-icon::after {
+  width: 3px;
+  height: 8px;
+  transform: translate(-50%, -100%) rotate(55deg);
+}
+
+.info-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #4b5563;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.info-value {
+  display: block;
+  color: #171717;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.uv-right-panel {
+  display: grid;
+  gap: 1.3rem;
+}
+
+.gauge-card {
+  display: grid;
+  justify-items: center;
+  padding-top: 0.5rem;
+}
+
+.uv-gauge {
+  width: min(100%, 360px);
+  height: auto;
+}
+
+.gauge-track {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.08);
+  stroke-width: 12;
+  stroke-linecap: round;
+}
+
+.gauge-active {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+}
+
+.gauge-needle {
+  stroke: #28303c;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+.gauge-center {
+  fill: #28303c;
+}
+
+.uv-number {
+  margin-top: -0.5rem;
+  font-size: clamp(3.8rem, 7vw, 5.4rem);
+  line-height: 1;
+  font-weight: 800;
+  color: #000000;
+}
+
+.uv-risk-badge {
+  margin-top: 0.8rem;
+  padding: 0.7rem 1.2rem;
+  border-radius: 14px;
+  font-size: 1.55rem;
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.mini-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.mini-info-card {
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.08);
+}
+
+.mini-info-card--purple {
+  background: linear-gradient(180deg, #f2cbf2 0%, #d8b2dc 100%);
+  border: 1px solid #d2b1d8;
+}
+
+.mini-info-card--light {
+  background: linear-gradient(180deg, #ffffff 0%, #efefef 100%);
+  border: 1px solid #d8d8d8;
+}
+
+.mini-info-label {
+  display: block;
+  color: #4b5563;
+  font-size: 0.9rem;
+  margin-bottom: 0.45rem;
+}
+
+.mini-info-value {
+  display: block;
+  color: #171717;
+  font-size: 1.45rem;
+  line-height: 1.25;
+}
+
+.mini-info-note {
+  display: block;
+  margin-top: 0.45rem;
+  color: #6b7280;
+  font-size: 0.78rem;
+}
+
+.warning-card {
+  padding: 1.35rem;
+  border: 2px solid #dc2626;
+  border-radius: 18px;
+  background: rgba(255, 225, 225, 0.82);
+}
+
+.warning-header {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+}
+
+.warning-icon {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.warning-title {
+  margin: 0;
+  font-size: 1.85rem;
+  color: #181818;
+}
+
+.warning-text {
+  margin: 0.45rem 0 0;
+  color: #303030;
+  font-size: 1rem;
+}
+
+.warning-subtext {
+  margin: 1.2rem 0 1rem;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #171717;
+}
+
+.protection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  text-align: center;
+}
+
+.protection-item {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: center;
+}
+
+.protection-icon {
+  font-size: 2.6rem;
+}
+
+.protection-label {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #171717;
+}
+
+.refresh-note {
+  margin: 1.2rem 0 0;
+  color: #5b6170;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.lower-panels {
+  display: grid;
+  gap: 1.3rem;
+  margin-top: 1.3rem;
+}
+
+.detail-card {
+  padding: 1.35rem;
+  background: #f5efe2;
+  border: 1px solid #e1d7c5;
+  border-radius: 22px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+.detail-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.detail-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.detail-icon--sun {
+  background: #fff2b8;
+}
+
+.detail-icon--alert {
+  background: #ffd8d8;
+}
+
+.detail-title {
+  margin: 0;
+  font-size: 1.8rem;
+  color: #1f1f1f;
+}
+
+.detail-subtitle {
+  margin: 0.3rem 0 0;
+  color: #5b6170;
+  line-height: 1.5;
+}
+
+.forecast-chart {
+  overflow-x: auto;
+}
+
+.forecast-svg {
+  width: 100%;
+  min-width: 720px;
+  height: auto;
+  display: block;
+  background: #fcfaf5;
+  border-radius: 16px;
+}
+
+.forecast-grid-line {
+  stroke: rgba(30, 41, 59, 0.14);
+  stroke-width: 1;
+}
+
+.forecast-axis-line {
+  stroke: #5f6775;
+  stroke-width: 1.3;
+}
+
+.forecast-axis-label {
+  fill: #4b5563;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.forecast-band-label {
+  fill: #202530;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.forecast-line {
+  fill: none;
+  stroke: #1d9bf0;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.forecast-point {
+  fill: #1d9bf0;
+}
+
+.skin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.skin-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #efefef 100%);
+  border: 1px solid #d6d6d6;
+  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.06);
+}
+
+.skin-card__label {
+  color: #2d2d2d;
+  line-height: 1.4;
+}
+
+.skin-card__time {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 76px;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.skin-card__time--danger {
+  background: #ffd5d5;
+  color: #c81e1e;
+}
+
+.skin-card__time--warning {
+  background: #ffe4be;
+  color: #ca6a04;
+}
+
+.skin-card__time--caution {
+  background: #fff0b3;
+  color: #9a6700;
+}
+
+.skin-card__time--safe {
+  background: #d8f5ca;
+  color: #15803d;
+}
+
+@media (max-width: 980px) {
+  .uv-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .uv-left-panel {
+    padding-right: 0;
+    border-right: 0;
+    border-bottom: 2px solid #403c36;
+    padding-bottom: 1.5rem;
+  }
+
+  .skin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .location-title {
+    font-size: 1.45rem;
+  }
+
+  .map-container,
+  .map-wrapper {
+    min-height: 280px;
+    height: 280px;
+  }
+
+  .info-strip {
+    flex-direction: column;
+  }
+
+  .mini-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .protection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .uv-risk-badge {
+    font-size: 1.15rem;
+  }
+
+  .warning-title {
+    font-size: 1.35rem;
+  }
+
+  .detail-title {
+    font-size: 1.35rem;
+  }
+
+  .skin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .skin-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+</style>

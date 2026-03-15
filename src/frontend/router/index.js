@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import UvNowView from '../views/UvNowView.vue'
+import AwarenessView from '../views/AwarenessView.vue'
+import ResourcesView from '../views/ResourcesView.vue'
 
 const routes = [
   {
@@ -10,6 +13,23 @@ const routes = [
     path: '/home',
     name: 'Home',
     component: HomeView,
+    meta: { public: true },
+  },
+  {
+    path: '/uv-now',
+    name: 'UvNow',
+    component: UvNowView,
+    meta: { public: true },
+  },
+  {
+    path: '/awareness',
+    name: 'Awareness',
+    component: AwarenessView,
+  },
+  {
+    path: '/resources',
+    name: 'Resources',
+    component: ResourcesView,
   },
 ]
 
