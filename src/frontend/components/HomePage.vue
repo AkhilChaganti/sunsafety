@@ -1,125 +1,160 @@
 <template>
-  <section class="home-page">
-    <div class="home-page__inner">
-      <div class="home-hero">
-        <span class="home-hero__eyebrow">Welcome</span>
-        <h1 class="home-hero__title">Welcome to SunSafe</h1>
-        <p class="home-hero__text">
-          Use SunSafe to check the current UV level, learn more about sun awareness,
-          and find useful safety resources before you head outside.
+  <div class="home-page">
+    <div class="hero-section">
+      <div class="overlay"></div>
+
+      <div class="hero-content">
+        <h1>SunSafety</h1>
+        <p class="tagline">Keeping you safe from the sun.</p>
+
+        <p class="description">
+          Established in 2026, SunSafety is a website dedicated to raising awareness
+          about UV radiation and how it affects skin health and skin cancer rates in Australia.
         </p>
 
-        <p class="home-hero__note">
-          Choose a page below to get started.
-        </p>
+        <div class="button-group">
+          <router-link to="/uv-now" class="hero-btn primary-btn">
+            View current UV Levels
+          </router-link>
 
-        <div class="home-hero__actions">
-          <RouterLink to="/uv-now" class="home-button home-button--primary">
-            UV Now
-          </RouterLink>
-
-          <RouterLink to="/awareness" class="home-button home-button--secondary">
-            Awareness
-          </RouterLink>
-
-          <RouterLink to="/resources" class="home-button home-button--secondary">
-            Resources
-          </RouterLink>
+          <router-link to="/awareness" class="hero-btn secondary-btn">
+            Skin Cancer Facts
+          </router-link>
         </div>
       </div>
     </div>
-  </section>
+  </div>
 </template>
 
 <style scoped>
 .home-page {
-  width: 100%;
-  padding: 2.5rem 0 3rem;
-  background: linear-gradient(180deg, #f8f4e8 0%, #f6f0de 100%);
+  min-height: 100vh;
+  background-color: #1b0d05;
 }
 
-.home-page__inner {
-  width: min(960px, 92%);
-  margin: 0 auto;
+.hero-section {
+  position: relative;
+  min-height: 100vh;
+  background-image: url('/Homepage.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
 }
 
-.home-hero {
-  padding: 2.4rem;
-  border: 1px solid #e1d7c5;
-  border-radius: 26px;
-  background: #f5efe2;
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.07);
+.overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(20, 8, 2, 0.35), rgba(20, 8, 2, 0.75)),
+    linear-gradient(to top, rgba(0, 0, 0, 0.45), transparent 40%);
+  z-index: 1;
+}
+
+.header-wrapper {
+  position: relative;
+  z-index: 3;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  min-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1.5rem 4rem;
+  text-align: center;
+  color: white;
+}
+
+.hero-content h1 {
+  font-size: 4rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.tagline {
+  margin-top: 0.75rem;
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: #fff2e6;
+}
+
+.description {
+  max-width: 760px;
+  margin-top: 2rem;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #f8e8dc;
+  background-color: rgba(0, 0, 0, 0.22);
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+}
+
+.button-group {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 2.5rem;
+}
+
+.hero-btn {
+  text-decoration: none;
+  padding: 0.95rem 1.8rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.25s ease;
+  display: inline-block;
+  min-width: 210px;
   text-align: center;
 }
 
-.home-hero__eyebrow {
-  display: inline-block;
-  margin-bottom: 0.8rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  background: #fff7ed;
-  color: #c2410c;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.primary-btn {
+  background-color: #f28c28;
+  color: white;
 }
 
-.home-hero__title {
-  margin: 0;
-  color: #1f1f1f;
-  font-size: clamp(2.4rem, 5vw, 4.2rem);
-  line-height: 1;
+.primary-btn:hover {
+  background-color: #de7818;
 }
 
-.home-hero__text {
-  max-width: 56ch;
-  margin: 1rem auto 0;
-  color: #5b6170;
-  line-height: 1.7;
-  font-size: 1.05rem;
+.secondary-btn {
+  background-color: #8a4b17;
+  color: white;
 }
 
-.home-hero__note {
-  margin: 1rem 0 0;
-  color: #7a6f63;
-  font-size: 0.98rem;
-  font-weight: 600;
+.secondary-btn:hover {
+  background-color: #6f3b11;
 }
 
-.home-hero__actions {
-  display: flex;
-  gap: 0.9rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 1.4rem;
-}
+@media (max-width: 768px) {
+  .hero-content h1 {
+    font-size: 2.8rem;
+  }
 
-.home-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 0.8rem 1.2rem;
-  border-radius: 14px;
-  text-decoration: none;
-  font-weight: 700;
-}
+  .tagline {
+    font-size: 1.1rem;
+  }
 
-.home-button--primary {
-  background: #f59e0b;
-  color: #ffffff;
-}
+  .description {
+    font-size: 0.95rem;
+    max-width: 90%;
+  }
 
-.home-button--secondary {
-  background: #ffffff;
-  color: #374151;
-  border: 1px solid #d7d7d7;
-}
+  .button-group {
+    gap: 1rem;
+    flex-direction: column;
+    align-items: center;
+  }
 
-@media (max-width: 700px) {
-  .home-hero {
-    padding: 1.8rem 1.25rem;
+  .hero-btn {
+    width: 100%;
+    max-width: 260px;
   }
 }
 </style>
