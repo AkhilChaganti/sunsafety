@@ -107,9 +107,9 @@
               </div>
 
               <div class="mini-info-card mini-info-card--light">
-                <span class="mini-info-label">Skin burn time</span>
-                <strong class="mini-info-value">10 to 15 minutes</strong>
-                <small class="mini-info-note">Quick display text for now</small>
+                <span class="mini-info-label">Today's peak UV</span>
+                <strong class="mini-info-value">{{ todayPeakUvText }}</strong>
+                <small class="mini-info-note">{{ todayPeakTimeText }}</small>
               </div>
             </div>
 
@@ -171,13 +171,17 @@
             <div>
               <h2 class="detail-title">Today's UV Forecast</h2>
               <p class="detail-subtitle">
-                Live forecast data is shown here when available.
+                Real hourly UV forecast for today from the weather response.
               </p>
             </div>
           </div>
 
           <div v-if="forecastPoints.length" class="forecast-chart">
-            <svg viewBox="0 0 760 320" class="forecast-svg" aria-label="Today's UV forecast chart">
+            <svg
+              viewBox="0 0 760 320"
+              class="forecast-svg"
+              aria-label="Today's UV forecast chart"
+            >
               <g>
                 <rect
                   v-for="band in forecastBands"
@@ -275,8 +279,8 @@
             </svg>
           </div>
 
-          <p v-else class="forecast-empty">
-            Forecast unavailable.
+          <p v-else class="empty-panel-text">
+            Today's hourly UV forecast is not available in the current API response.
           </p>
         </section>
 
@@ -287,7 +291,7 @@
             <div>
               <h2 class="detail-title">Skin Damage Times at Current UV Level</h2>
               <p class="detail-subtitle">
-                Minutes of unprotected exposure before skin starts burning.
+                Simple estimate based on the live UV value shown above.
               </p>
             </div>
           </div>
@@ -318,7 +322,7 @@
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import LocationInput from './LocationInput.vue'
+import LocationInput from '../components/LocationInput.vue'
 import { getCurrentUvByCoords, searchLocation } from '../services/uvService'
 
 const isLoading = ref(false)
@@ -420,7 +424,6 @@ const uvValueText = computed(() => {
 function getUvDisplayInfo(uvIndex) {
   const value = Number(uvIndex)
 
-  // Keeps the screen stable if the API sends something unexpected.
   if (Number.isNaN(value) || value < 0) {
     return {
       level: 'Unknown',
@@ -569,47 +572,92 @@ function extractHourValue(rawTime) {
   return date.getHours() + date.getMinutes() / 60
 }
 
-const forecastPoints = computed(() => {
-  const source =
+function isSameLocalDay(dateA, dateB) {
+  return (
+    dateA.getFullYear() === dateB.getFullYear() &&
+    dateA.getMonth() === dateB.getMonth() &&
+    dateA.getDate() === dateB.getDate()
+  )
+}
+
+const rawHourlyForecast = computed(() => {
+  return (
+    uvData.value?.hourly ||
     uvData.value?.forecast ||
     uvData.value?.hourlyForecast ||
-    uvData.value?.hourly ||
     uvData.value?.todayForecast ||
     []
+  )
+})
 
-  if (Array.isArray(source) && source.length) {
-    const parsedPoints = source
-      .map((item, index) => {
-        const uvIndex = Number(
-          item?.uvIndex ??
-          item?.uv ??
-          item?.value ??
-          item?.index
-        )
-
-        const rawTime =
-          item?.time ??
-          item?.timestamp ??
-          item?.datetime ??
-          item?.hour
-
-        const hour = extractHourValue(rawTime)
-
-        return {
-          key: item?.id ?? `forecast-${index}`,
-          uvIndex,
-          hour,
-        }
-      })
-      .filter((item) => Number.isFinite(item.uvIndex) && Number.isFinite(item.hour))
-      .sort((a, b) => a.hour - b.hour)
-
-    if (parsedPoints.length) {
-      return parsedPoints
-    }
+const forecastPoints = computed(() => {
+  if (!Array.isArray(rawHourlyForecast.value)) {
+    return []
   }
 
-  return []
+  const referenceDate = getValidDate(uvData.value?.time) || new Date()
+
+  return rawHourlyForecast.value
+    .map((item, index) => {
+      const uvIndex = Number(
+        item?.uvi ??
+        item?.uvIndex ??
+        item?.uv ??
+        item?.value ??
+        item?.index
+      )
+
+      const rawTime =
+        item?.dt ??
+        item?.time ??
+        item?.timestamp ??
+        item?.datetime ??
+        item?.hour
+
+      const date = getValidDate(rawTime)
+      const hour = extractHourValue(rawTime)
+
+      return {
+        key: item?.id ?? `forecast-${index}`,
+        uvIndex,
+        hour,
+        date,
+      }
+    })
+    .filter((item) => {
+      return (
+        Number.isFinite(item.uvIndex) &&
+        Number.isFinite(item.hour) &&
+        item.date &&
+        isSameLocalDay(item.date, referenceDate)
+      )
+    })
+    .sort((a, b) => a.hour - b.hour)
+})
+
+const todayPeakPoint = computed(() => {
+  if (!forecastPoints.value.length) return null
+
+  return forecastPoints.value.reduce((highest, point) => {
+    if (!highest || point.uvIndex > highest.uvIndex) {
+      return point
+    }
+
+    return highest
+  }, null)
+})
+
+const todayPeakUvText = computed(() => {
+  if (!todayPeakPoint.value) return 'Unavailable'
+
+  const value = todayPeakPoint.value.uvIndex
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+})
+
+const todayPeakTimeText = computed(() => {
+  if (!todayPeakPoint.value) return 'No hourly forecast data'
+
+  return `Around ${formatHourLabel(todayPeakPoint.value.hour)}`
 })
 
 const forecastRange = computed(() => {
@@ -697,7 +745,6 @@ const skinDamageItems = computed(() => {
       }
     }
 
-    // This gives a simple front-end estimate based on the live UV value.
     const estimatedMinutes = Math.max(
       2,
       Math.round((item.baseMinutesAtUv8 * 8) / currentUv)
@@ -1299,17 +1346,6 @@ onUnmounted(() => {
   overflow-x: auto;
 }
 
-.forecast-empty {
-  margin: 0;
-  padding: 1.1rem 1.2rem;
-  border: 1px dashed #c9bfae;
-  border-radius: 16px;
-  background: #fcfaf5;
-  color: #5b6170;
-  text-align: center;
-  font-weight: 600;
-}
-
 .forecast-svg {
   width: 100%;
   min-width: 720px;
@@ -1351,6 +1387,15 @@ onUnmounted(() => {
 
 .forecast-point {
   fill: #1d9bf0;
+}
+
+.empty-panel-text {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  background: #fcfaf5;
+  color: #5b6170;
+  line-height: 1.5;
 }
 
 .skin-grid {
