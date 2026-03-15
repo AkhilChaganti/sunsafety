@@ -112,7 +112,7 @@
               :style="{ borderColor: uvDisplayInfo.color }"
             >
               <div class="warning-header">
-                <span class="warning-icon" aria-hidden="true">âš ï¸</span>
+                <span class="warning-icon" aria-hidden="true">🚨</span>
 
                 <div>
                   <h3 class="warning-title">
@@ -129,17 +129,17 @@
 
               <div class="protection-grid">
                 <div class="protection-item">
-                  <span class="protection-icon" aria-hidden="true">ðŸ§´</span>
+                  <span class="protection-icon" aria-hidden="true">🧴</span>
                   <span class="protection-label">SPF50+</span>
                 </div>
 
                 <div class="protection-item">
-                  <span class="protection-icon" aria-hidden="true">ðŸ‘’</span>
+                  <span class="protection-icon" aria-hidden="true">🧢</span>
                   <span class="protection-label">Hat</span>
                 </div>
 
                 <div class="protection-item">
-                  <span class="protection-icon" aria-hidden="true">ðŸ•¶ï¸</span>
+                  <span class="protection-icon" aria-hidden="true">🕶️</span>
                   <span class="protection-label">Sunglasses</span>
                 </div>
               </div>
@@ -160,7 +160,7 @@
       <section v-if="uvData" class="lower-panels">
         <section class="detail-card">
           <div class="detail-card__header">
-            <div class="detail-icon detail-icon--alert" aria-hidden="true">â±ï¸</div>
+            <div class="detail-icon detail-icon--alert" aria-hidden="true">⏱️</div>
 
             <div>
               <h2 class="detail-title">Skin Damage Times at Current UV Level</h2>
