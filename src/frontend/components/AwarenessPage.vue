@@ -1,116 +1,96 @@
 <template>
-  <section class="info-page">
-    <div class="info-page__inner">
-      <div class="info-page__hero">
-        <span class="info-page__eyebrow">Awareness</span>
-        <h1 class="info-page__title">Know when UV becomes a real risk</h1>
-        <p class="info-page__intro">
-          UV can still be strong even when the day feels cool or cloudy. This page gives
-          people simple reminders about when sun protection matters most.
+  <section class="awareness-page">
+    <h1 class="page-title">Sun Safety Awareness</h1>
+
+    <p class="page-description">
+      This section shows skin cancer statistics in Australia and explains why UV exposure should be taken seriously.
+    </p>
+
+    <div v-if="loading" class="status-box">
+      Loading skin cancer statistics...
+    </div>
+
+    <div v-else-if="error" class="status-box error">
+      {{ error }}
+    </div>
+
+    <div v-else class="content-block">
+      <SkinCancerChart :stats="skinCancerStats" />
+
+      <div class="insight-box">
+        <h2>Why this matters</h2>
+        <p>
+          Australia has very high UV exposure, and repeated overexposure can damage skin cells over time.
+          This increases the risk of skin cancer, including melanoma. These statistics show why regular
+          sun protection is important, especially when UV levels are high.
         </p>
-      </div>
-
-      <div class="info-grid">
-        <article class="info-card">
-          <h2 class="info-card__title">When protection starts</h2>
-          <p class="info-card__text">
-            Sun protection is recommended once the UV Index reaches 3 or higher.
-          </p>
-        </article>
-
-        <article class="info-card">
-          <h2 class="info-card__title">Best daily habit</h2>
-          <p class="info-card__text">
-            Check the UV level before going out and plan shade, clothing, sunscreen, and
-            sunglasses early.
-          </p>
-        </article>
-
-        <article class="info-card">
-          <h2 class="info-card__title">Why it matters</h2>
-          <p class="info-card__text">
-            Repeated UV exposure increases the risk of sunburn, early skin aging, and skin
-            cancer.
-          </p>
-        </article>
       </div>
     </div>
   </section>
 </template>
 
-<style scoped>
-.info-page {
-  width: 100%;
-  padding: 2.5rem 0 3rem;
-  background: linear-gradient(180deg, #f8f4e8 0%, #f6f0de 100%);
-}
+<script setup>
+import { ref, onMounted } from 'vue'
+import SkinCancerChart from './SkinCancerChart.vue'
 
-.info-page__inner {
-  width: min(1100px, 92%);
-  margin: 0 auto;
-}
+const skinCancerStats = ref([])
+const loading = ref(true)
+const error = ref('')
 
-.info-page__hero {
-  margin-bottom: 1.5rem;
-}
+onMounted(async () => {
+  try {
+    const response = await fetch('/api/awareness/skin-cancer')
 
-.info-page__eyebrow {
-  display: inline-block;
-  margin-bottom: 0.7rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  background: #fff7ed;
-  color: #c2410c;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
+    if (!response.ok) {
+      throw new Error('Failed to load skin cancer statistics')
+    }
 
-.info-page__title {
-  margin: 0;
-  color: #1f1f1f;
-  font-size: clamp(2rem, 4vw, 3rem);
-  line-height: 1.05;
-}
-
-.info-page__intro {
-  max-width: 60ch;
-  margin: 0.8rem 0 0;
-  color: #5b6170;
-  line-height: 1.7;
-  font-size: 1.05rem;
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.2rem;
-}
-
-.info-card {
-  padding: 1.4rem;
-  border: 1px solid #e1d7c5;
-  border-radius: 22px;
-  background: #f5efe2;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
-}
-
-.info-card__title {
-  margin: 0 0 0.7rem;
-  color: #1f1f1f;
-  font-size: 1.35rem;
-}
-
-.info-card__text {
-  margin: 0;
-  color: #4b5563;
-  line-height: 1.7;
-}
-
-@media (max-width: 850px) {
-  .info-grid {
-    grid-template-columns: 1fr;
+    skinCancerStats.value = await response.json()
+  } catch (err) {
+    error.value = err.message || 'Something went wrong while loading the chart data.'
+  } finally {
+    loading.value = false
   }
+})
+</script>
+
+<style scoped>
+.awareness-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.page-title {
+  margin-bottom: 12px;
+}
+
+.page-description {
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.content-block {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.status-box {
+  padding: 16px;
+  border-radius: 12px;
+  background: #f4f4f4;
+}
+
+.status-box.error {
+  background: #ffe5e5;
+  color: #a40000;
+}
+
+.insight-box {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  line-height: 1.6;
 }
 </style>
