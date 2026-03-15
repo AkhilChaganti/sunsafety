@@ -3,7 +3,6 @@ import HomeView from '../views/HomeView.vue'
 import UvNowView from '../views/UvNowView.vue'
 import AwarenessView from '../views/AwarenessView.vue'
 import ResourcesView from '../views/ResourcesView.vue'
-import { m } from 'vue-router/dist/index-DFCq6eJK'
 
 const routes = [
   {

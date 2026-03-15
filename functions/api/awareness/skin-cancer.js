@@ -2,15 +2,16 @@ export async function onRequestGet(context) {
   try {
     const db = context.env.sunsafety_db;
 
+    if (!db) {
+      throw new Error("D1 binding 'sunsafety_db' is missing");
+    }
+
     const { results } = await db
       .prepare(`
         SELECT
           year,
           data_type,
-          cancer_group_site,
-          sex,
-          age_group_years,
-          cases_count,
+          count AS cases_count,
           age_standardised_rate_2001_asp AS age_standardised_rate,
           icd10_codes
         FROM skin_cancer_stats
@@ -24,11 +25,11 @@ export async function onRequestGet(context) {
       },
       status: 200
     });
-  } catch (error) {
+  } catch (e) {
     return new Response(
       JSON.stringify({
         error: "Failed to fetch skin cancer statistics",
-        details: error.message
+        details: e.message
       }),
       {
         headers: {
