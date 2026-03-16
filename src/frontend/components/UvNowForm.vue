@@ -3,7 +3,7 @@
     <div class="home-container">
       <header class="home-header">
         <h1 class="page-subtitle">
-          Check the current UV level for your area and stay aware when you are outdoors.
+          Check the current UV level in your area and stay aware when you are outdoors.
         </h1>
       </header>
 
@@ -403,7 +403,7 @@ function formatCoordinate(value, positiveDirection, negativeDirection) {
   }
 
   const direction = numericValue >= 0 ? positiveDirection : negativeDirection
-  return `${Math.abs(numericValue).toFixed(4)}Â°${direction}`
+  return `${Math.abs(numericValue).toFixed(4)}📍${direction}`
 }
 
 function getSkinToneClass(minutes) {
@@ -425,7 +425,7 @@ const skinDamageItems = computed(() => {
       }
     }
 
-    if (currentUv < 2.5) {
+    if (currentUv < 3) {
       return {
         ...item,
         timeText: 'Minimal',

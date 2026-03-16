@@ -1,7 +1,7 @@
 <template>
   <footer class="site-footer">
     <div class="footer-inner">
-      <p class="footer-brand">☀️ SunSafe</p>
+      <p class="footer-brand">☀️ SunSafety</p>
       <p class="footer-text">
         Built to help users check UV risk quickly and stay aware outdoors.
       </p>
