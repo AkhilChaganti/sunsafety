@@ -8,7 +8,7 @@
         <p class="tagline">Keeping you safe from the sun.</p>
 
         <p class="description">
-          Established in 2026, SunSafety is a website dedicated to raising awareness
+          SunSafety is a website dedicated to raising awareness
           about UV radiation and how it affects skin health and skin cancer rates in Australia.
         </p>
 

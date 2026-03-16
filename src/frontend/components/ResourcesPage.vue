@@ -1,110 +1,415 @@
 <template>
-  <section class="info-page">
-    <div class="info-page__inner">
-      <div class="info-page__hero">
-        <span class="info-page__eyebrow">Resources</span>
-        <h1 class="info-page__title">Useful sun safety resources in one place</h1>
-        <p class="info-page__intro">
-          This page can hold trusted links, official guidance, and practical tips that help
-          people make safer choices outdoors.
+  <section class="resources-page">
+    <div class="resources-hero">
+      <p class="hero-badge">Trusted Sources</p>
+      <h1>Resources for Sun Safety Awareness</h1>
+      <p class="hero-description">
+        This page highlights the research, health guidance, and Australian reports that support the information shared on this website.
+      </p>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-box">
+        <input
+          v-model="searchText"
+          type="text"
+          placeholder="Search resources..."
+        />
+      </div>
+
+      <div class="filter-buttons">
+        <button
+          v-for="filter in filters"
+          :key="filter"
+          :class="['filter-btn', { active: selectedFilter === filter }]"
+          @click="selectedFilter = filter"
+        >
+          {{ filter }}
+        </button>
+      </div>
+    </div>
+
+    <div class="results-summary">
+      <p>{{ filteredResources.length }} resource<span v-if="filteredResources.length !== 1">s</span> found</p>
+    </div>
+
+    <div v-if="filteredResources.length" class="resources-grid">
+      <article
+        v-for="resource in filteredResources"
+        :key="resource.id"
+        class="resource-card"
+      >
+        <div class="card-header">
+          <span class="category">{{ resource.category }}</span>
+          <span class="year">{{ resource.year }}</span>
+        </div>
+
+        <h2 class="resource-title">{{ resource.title }}</h2>
+        <p class="resource-source">{{ resource.source }}</p>
+
+        <p class="resource-summary">
+          {{ resource.summary }}
         </p>
-      </div>
 
-      <div class="resource-list">
-        <article class="resource-card">
-          <h2 class="resource-card__title">UV guidance</h2>
-          <p class="resource-card__text">
-            Add official information about UV levels, daily protection windows, and how to
-            read the index.
-          </p>
-        </article>
+        <div class="why-box">
+          <h3>Why this matters</h3>
+          <p>{{ resource.whyItMatters }}</p>
+        </div>
 
-        <article class="resource-card">
-          <h2 class="resource-card__title">Sun protection checklist</h2>
-          <p class="resource-card__text">
-            Add reminders for sunscreen, protective clothing, hats, sunglasses, shade, and
-            hydration.
-          </p>
-        </article>
+        <a
+          :href="resource.link"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="learn-more-btn"
+        >
+          Learn More
+        </a>
+      </article>
+    </div>
 
-        <article class="resource-card">
-          <h2 class="resource-card__title">Emergency or care advice</h2>
-          <p class="resource-card__text">
-            Add steps for mild sunburn care and links to professional medical guidance when
-            symptoms become serious.
-          </p>
-        </article>
-      </div>
+    <div v-else class="empty-state">
+      <h3>No resources matched your search</h3>
+      <p>Try a different keyword or filter.</p>
     </div>
   </section>
 </template>
 
+<script setup>
+import { computed, ref } from 'vue'
+
+const searchText = ref('')
+const selectedFilter = ref('All')
+
+const filters = ['All', 'Research', 'Survey', 'Guideline', 'Article']
+
+const resources = [
+  {
+    id: 1,
+    category: 'Research',
+    year: '2021',
+    title: 'Sun-health behaviours and attitudes towards sun safety amongst Australian teenagers',
+    source: 'BioMed Central Research Notes',
+    summary:
+      'This study explores how Australian teenagers think about sun safety, tanning and protective behaviour.',
+    whyItMatters:
+      'It supports the idea that awareness alone is not always enough, because many young people still do not follow safe habits consistently.',
+    link: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC8425089/'
+  },
+  {
+    id: 2,
+    category: 'Research',
+    year: '2023',
+    title: 'Patterns of Sun Protection Behaviours among Australian Adolescents and Adults over a Six-Year Period',
+    source: 'Current Oncology',
+    summary:
+      'This paper looks at how sun protection behaviour changes over time across different age groups in Australia.',
+    whyItMatters:
+      'It gives stronger research support for behaviour trends and shows why ongoing education about UV safety is still important.',
+    link: 'https://www.mdpi.com/1718-7729/30/8/520'
+  },
+  {
+    id: 3,
+    category: 'Survey',
+    year: '2024',
+    title: 'Sun protection behaviours, Nov 2023 to Feb 2024',
+    source: 'Australian Bureau of Statistics',
+    summary:
+      'This report presents Australian data on how people use sunscreen, hats and other protective measures during sunny periods.',
+    whyItMatters:
+      'It adds recent Australian evidence to the project and helps show that this is a real public health issue, not just a personal opinion.',
+    link: 'https://www.abs.gov.au/statistics/health/health-conditions-and-risks/sun-protection-behaviours/latest-release'
+  },
+  {
+    id: 4,
+    category: 'Guideline',
+    year: '2024',
+    title: 'Balancing the risks and benefits of sun exposure: A revised position statement for Australian adults',
+    source: 'Monash University',
+    summary:
+      'This source discusses safe sun exposure in a balanced way, including both risks such as skin cancer and wider health considerations.',
+    whyItMatters:
+      'It helps keep the website responsible and realistic by showing that sun safety advice should be evidence-based and balanced.',
+    link: 'https://research.monash.edu/en/publications/balancing-the-risks-and-benefits-of-sun-exposure-a-revised-positi/'
+  },
+  {
+  id: 5,
+  category: 'Article',
+  year: '2024',
+  title: 'Concerning new data shows almost half of Australians aren’t using adequate sun protection',
+  source: 'Cancer Council',
+  summary:
+    'A Cancer Council media release reporting new Australian survey findings on sunscreen use, tanning behaviour and inadequate sun protection during peak UV times.',
+  whyItMatters:
+    'It gives recent Australian evidence that many people are still not protecting themselves properly, which directly supports the purpose of this sun safety website.',
+  link: 'https://www.cancer.org.au/media-releases/2024/concerning-new-data-shows-almost-half-of-australians-aren-t-using-adequate-sun-protection'
+}
+]
+
+const filteredResources = computed(() => {
+  let result = resources
+
+  if (selectedFilter.value !== 'All') {
+    result = result.filter(
+      (resource) => resource.category === selectedFilter.value
+    )
+  }
+
+  if (searchText.value.trim()) {
+    const keyword = searchText.value.toLowerCase()
+    result = result.filter((resource) => {
+      return (
+        resource.title.toLowerCase().includes(keyword) ||
+        resource.source.toLowerCase().includes(keyword) ||
+        resource.summary.toLowerCase().includes(keyword) ||
+        resource.category.toLowerCase().includes(keyword)
+      )
+    })
+  }
+
+  return result
+})
+</script>
+
 <style scoped>
-.info-page {
-  width: 100%;
-  padding: 2.5rem 0 3rem;
-  background: linear-gradient(180deg, #f8f4e8 0%, #f6f0de 100%);
+.resources-page {
+  min-height: 100vh;
+  padding: 40px 20px 60px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 196, 0, 0.18), transparent 28%),
+    linear-gradient(180deg, #fffdf8 0%, #f6fbff 100%);
 }
 
-.info-page__inner {
-  width: min(1100px, 92%);
-  margin: 0 auto;
+.resources-hero {
+  max-width: 900px;
+  margin: 0 auto 30px;
+  text-align: center;
 }
 
-.info-page__hero {
-  margin-bottom: 1.5rem;
-}
-
-.info-page__eyebrow {
+.hero-badge {
   display: inline-block;
-  margin-bottom: 0.7rem;
-  padding: 0.35rem 0.75rem;
+  margin-bottom: 12px;
+  padding: 7px 14px;
   border-radius: 999px;
-  background: #fff7ed;
-  color: #c2410c;
+  background-color: #fff0c9;
+  color: #8c5a00;
   font-size: 0.85rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
-.info-page__title {
-  margin: 0;
-  color: #1f1f1f;
-  font-size: clamp(2rem, 4vw, 3rem);
-  line-height: 1.05;
+.resources-hero h1 {
+  margin: 0 0 14px;
+  font-size: 2.3rem;
+  line-height: 1.2;
+  color: #183153;
 }
 
-.info-page__intro {
-  max-width: 60ch;
-  margin: 0.8rem 0 0;
-  color: #5b6170;
+.hero-description {
+  max-width: 760px;
+  margin: 0 auto;
+  font-size: 1rem;
   line-height: 1.7;
-  font-size: 1.05rem;
+  color: #526274;
 }
 
-.resource-list {
+.toolbar {
+  max-width: 1100px;
+  margin: 0 auto 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #d7e2ec;
+  border-radius: 14px;
+  font-size: 0.98rem;
+  outline: none;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.search-box input:focus {
+  border-color: #3d84d8;
+  box-shadow: 0 0 0 3px rgba(61, 132, 216, 0.12);
+}
+
+.filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-btn {
+  border: 1px solid #d6e1ea;
+  background: #ffffff;
+  color: #31465b;
+  padding: 10px 15px;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.filter-btn:hover {
+  transform: translateY(-1px);
+  border-color: #7fb0e8;
+}
+
+.filter-btn.active {
+  background: #183153;
+  color: #ffffff;
+  border-color: #183153;
+}
+
+.results-summary {
+  max-width: 1100px;
+  margin: 0 auto 18px;
+  color: #5e6d7d;
+  font-weight: 600;
+}
+
+.resources-grid {
+  max-width: 1100px;
+  margin: 0 auto;
   display: grid;
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 22px;
 }
 
 .resource-card {
-  padding: 1.4rem;
-  border: 1px solid #e1d7c5;
-  border-radius: 22px;
-  background: #f5efe2;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #e3ebf2;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 10px 28px rgba(18, 42, 66, 0.08);
 }
 
-.resource-card__title {
-  margin: 0 0 0.7rem;
-  color: #1f1f1f;
-  font-size: 1.35rem;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  gap: 10px;
 }
 
-.resource-card__text {
+.category {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #e9f4ff;
+  color: #2460a7;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.year {
+  color: #6a7888;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.resource-title {
+  margin: 0 0 10px;
+  font-size: 1.15rem;
+  line-height: 1.45;
+  color: #183153;
+}
+
+.resource-source {
+  margin: 0 0 14px;
+  color: #3477b8;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.resource-summary {
+  margin: 0 0 18px;
+  color: #4e5f70;
+  line-height: 1.65;
+  font-size: 0.96rem;
+}
+
+.why-box {
+  margin-top: auto;
+  background: #f7fbff;
+  border: 1px solid #e4eef7;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.why-box h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: #183153;
+}
+
+.why-box p {
   margin: 0;
-  color: #4b5563;
-  line-height: 1.7;
+  color: #596b7b;
+  line-height: 1.6;
+  font-size: 0.94rem;
+}
+
+.learn-more-btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 18px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #ffbf1f;
+  color: #1d1d1d;
+  text-decoration: none;
+  font-weight: 700;
+  transition: 0.2s ease;
+}
+
+.learn-more-btn:hover {
+  transform: translateY(-2px);
+  background: #f3b300;
+}
+
+.empty-state {
+  max-width: 700px;
+  margin: 40px auto 0;
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid #e3ebf2;
+  border-radius: 20px;
+  padding: 30px 20px;
+  box-shadow: 0 10px 24px rgba(18, 42, 66, 0.06);
+}
+
+.empty-state h3 {
+  margin: 0 0 10px;
+  color: #183153;
+}
+
+.empty-state p {
+  margin: 0;
+  color: #617182;
+}
+
+@media (max-width: 768px) {
+  .resources-page {
+    padding: 28px 16px 48px;
+  }
+
+  .resources-hero h1 {
+    font-size: 1.8rem;
+  }
+
+  .hero-description {
+    font-size: 0.95rem;
+  }
+
+  .toolbar {
+    gap: 14px;
+  }
 }
 </style>
